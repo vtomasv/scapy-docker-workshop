@@ -1,0 +1,114 @@
+services:
+  attacker:
+    build: ./attacker
+    container_name: scapy_attacker
+    hostname: attacker
+    tty: true
+    stdin_open: true
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    sysctls:
+      net.ipv4.ip_forward: "1"
+    environment:
+      LAB_CIDRS: "10.10.10.0/24"
+      LAB_IFACE: "eth0"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./attacker/labs:/labs
+      - ./captures:/captures
+    networks:
+      lab_lan:
+        ipv4_address: 10.10.10.10
+    depends_on:
+      - victim-client
+      - web-server
+      - api-server
+      - dns-server
+
+  victim-client:
+    build: ./victim-client
+    container_name: scapy_victim
+    hostname: victim-client
+    tty: true
+    stdin_open: true
+    cap_add:
+      - NET_RAW
+    dns:
+      - 10.10.10.53
+    extra_hosts:
+      - "web-server:10.10.10.30"
+      - "api-server:10.10.10.40"
+      - "dns-server:10.10.10.53"
+    environment:
+      PYTHONUNBUFFERED: "1"
+    networks:
+      lab_lan:
+        ipv4_address: 10.10.10.20
+    depends_on:
+      - web-server
+      - dns-server
+
+  web-server:
+    build: ./web-server
+    container_name: scapy_web
+    hostname: web-server
+    environment:
+      PYTHONUNBUFFERED: "1"
+    networks:
+      lab_lan:
+        ipv4_address: 10.10.10.30
+
+  api-server:
+    build: ./api-server
+    container_name: scapy_api
+    hostname: api-server
+    environment:
+      PYTHONUNBUFFERED: "1"
+    networks:
+      lab_lan:
+        ipv4_address: 10.10.10.40
+
+  dns-server:
+    build: ./dns-server
+    container_name: scapy_dns
+    hostname: dns-server
+    cap_add:
+      - NET_BIND_SERVICE
+    environment:
+      PYTHONUNBUFFERED: "1"
+    networks:
+      lab_lan:
+        ipv4_address: 10.10.10.53
+
+  monitor:
+    build: ./monitor
+    container_name: scapy_monitor
+    hostname: monitor
+    tty: true
+    stdin_open: true
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    environment:
+      LAB_CIDRS: "10.10.10.0/24"
+      LAB_IFACE: "eth0"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./attacker/labs:/labs:ro
+      - ./captures:/captures
+    networks:
+      lab_lan:
+        ipv4_address: 10.10.10.60
+    depends_on:
+      - web-server
+      - api-server
+      - dns-server
+
+networks:
+  lab_lan:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.10.10.0/24

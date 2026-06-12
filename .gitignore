@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+captures/*.pcap
+captures/*.pcapng
+captures/*.log
+.DS_Store
